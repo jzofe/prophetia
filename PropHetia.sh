@@ -358,6 +358,7 @@ while true; do
   dhcp
   time=$(date +"%H:%M:%S")
   echo -e "<$time> [\e[34m\e[1mDHCP\e[0m] are encrypted."
+  
   messag2="Prophetia: DHCP encrypted! Timeout : $timeout"
   notify-send "Prophetia Notification" "$messag2"
   dns
@@ -367,35 +368,47 @@ while true; do
   v5 2
   echo "<$time> [\e[34m\e[1mROUTER\e[0m] Spoofed (IPv6 + IPv4)"
   sudo ip route add default via "${gateways[$current_gateway_index]}"
+  
   echo -e "<$time> [\e[34m\e[1mGATEWAY\e[0m] Changed. New GATEWAY : '\e[31m\e[1m${gateways[$current_gateway_index]}\e[0m'"
   current_gateway_index=$(( (current_gateway_index + 1) % ${#gateways[@]} ))
+  
   messag5="Prophetia: Gateway changed Timeout : $timeout"
+  
   notify-send "Prophetia Notification" "$messag5"
   v5 2
   time=$(date +"%H:%M:%S")
+  
   echo -e "<$time> [Limit] Network connection limited."
+  
   v5 1
   echo -e "<$time> [\e[34m\e[1mUUID\e[0m] Disk UUID changed."
   v5 1
+  
   sudo service squid restart > /dev/null 2>&1
   mitmproxy --mode transparent --modify-headers ":~b'User-Agent:.*' -> 'User-Agent: $(cat /etc/squid/custom_user_agent)'" > /dev/null 2>&1
   user_agent
   time=$(date +"%H:%M:%S")
   echo -e "<$time> [\e[35m\e[1mUSER-AGENT\e[0m] Changed. New User Agent: '\e[34m$(cat /etc/squid/custom_user_agent)\e[0m'"
   v5 2
+  
   proxy=$(random_proxys)
+  
   sed -i "s/http_port 3128/http_port 3128\nacl my_acl src $proxy/g" /etc/squid/squid.conf
   echo -e "<$time> [\e[30m\e[1mPROXY\e[0m] Changed. New PROXY : $proxy"
   v5 2
   echo -e "<$time> [\e[34m\e[1mTOR\e[0m] tor connection encrypted. Socks5 and socks4 Dyanmic CHAIN active. "
   browser
   echo ""
+  
   echo "[FIREFOX] browser settings are being processed, please wait."
   v5 4
+  
   echo -e "[FIREFOX] Firefox has been started and security settings have been adjusted. Let the action begin :)"
   v5 2
   log
+  
   echo "[LOGS] ALL system logs cleared."
+  
   v5 1
   echo ""
 
