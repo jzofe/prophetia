@@ -3,7 +3,7 @@
 ## < Internet connection, traffic encryptor. And anon email sender>
 ## <BECOME A PROFESSIONAL ANONYMOUS>
 
-Connect to the internet with 7+ layers with PropHeita, no one will be able to track you!.
+Connect to the internet with 7+ layers with PropHetia, no one will be able to track you!.
 
 ## 🛠️ Setup 
 
