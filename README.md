@@ -1,6 +1,6 @@
-#     🕶️ PROPHETIA! - ENDER PROJECT [Update Soon]
+#     🕶️ PROPHETIA! - ENDER PROJECT [06/12/2025 - Updated!]
 
-## < Internet connection, traffic encryptor. And anon email sender>
+## < Internet connection, traffic encryptor.>
 ## <BECOME A PROFESSIONAL ANONYMOUS>
 
 OPEN - SOURCE
@@ -18,8 +18,7 @@ sudo bash PropHetia.sh
 ~~~
 
 ~~~shell
-usage: PropHetia.sh -c <interface> -d <disk> -t <timeout>
-for anon-email: PropHetia.sh -e <recipient_mail> -s <subject> -m <messsage>
+usage: PropHetia.sh -c <interface> -t <timeout>
 ~~~
 
 To learn your interface (lo, enp1s0, wlan0, wlo...) ;
