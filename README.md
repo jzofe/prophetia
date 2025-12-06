@@ -45,19 +45,19 @@ layer4: `spoofer.py` injects fake hops using real IPs belonging to Facebook, Goo
 
 layer5: default route jumps between 10 different public IPs (AdGuard, Quad9, Cloudflare, etc.) every cycle.
 
-layer6: a custom eBPF program is loaded into the kernel. every outgoing tcp packet gets randomised TTL, window size, tcp options, and sequence numbers. tools like p0f, nmap, shodan, or any DPI system see a different OS/fingerprint every few seconds.
+layer6: a custom eBPF program is loaded into the kernel. every outgoing tcp packet gets randomised TTL, window size, tcp options, and sequence numbers. tools like p0f, nmap, shodan, or any DPI system see a different OS/fingerprint every few seconds. 
 
 layer7: physical swap is killed. a 2 GB encrypted tmpfs + dm-crypt RAM disk is created and used as swap. nothing ever touches the hard drive.
 
 layer8: qubes-OS style isolation: a fresh network namespace + veth pair is created on every loop. even if something leaks, it dies with the namespace.
 
-layer9: traffic is forced through proxychains with dynamic_chain: tor (9050) → I2P (4447) → Lokinet (1090) → Yggdrasil (20001). four completely different anonymous networks stacked on top of each other. MTU randomized (1400-1500, u can change if you want xd).
+layer9: traffic is forced through proxychains with dynamic_chain: tor (9050) → I2P (4447) → Lokinet (1090) → Yggdrasil (20001). four completely different anonymous networks stacked on top of each other. MTU randomized (1400-1500, u can change if you want xd). traffic always fcked by noiser script(the script enters random sites in the background)
 
 layer10: a hardened “prophetia” profile is created and launched inside firejail --private. all telemetry, pings, beacons, and tracking protection are disabled by default.
 
 layer11: an infinite background loop gently moves the mouse in natural curves, clicks randomly, and types random characters at human-like speeds. canvas, webGL, and behavioral fingerprinting services think you’re a real person.
 
-layer12: every cycle: journalctl vacuumed + every log file in /var/log/* + ~/.bash_history + /tmp + /var/tmp shredded with 21 passes (DoD 5220.22-M standard). Forensic recovery is impossible.
+layer12: every cycle: journalctl vacuumed + every log file in /var/log/* + ~/.bash_history + /tmp + /var/tmp shredded with 21 passes (DoD 5220.22-M standard). forensic recovery is impossible. 
 
 layer13: hostname becomes something like “ghost-x7f9a2k1p3” and timezone jumps between New York, London, Tokyo, Johannesburg, etc.
 
