@@ -1,6 +1,14 @@
 #!/bin/bash
+# ENDER PROJECT - ULTIMATE FIXED VERSION
+
+# OPEN-SOURCE
+# BECOME A PROFESSIONAL ANONYMOUS.
+# Prophetia >>> <Internet connection, traffic encryptor.>
+
+# Coded By FYKS
+
 if [ "$EUID" -ne 0 ]; then
-  echo "Permission required. Type 'sudo bash prophetia_hybrid.sh -c <interface> -t 3600'."
+  echo "Permission required. Type 'sudo bash PropHetia.sh -c <interface> -t 3600'."
   exit 1
 fi
 
