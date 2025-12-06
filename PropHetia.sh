@@ -260,17 +260,9 @@ create_netns() {
 destroy_netns() {
   if ip netns pids "$NETNS_NAME" >/dev/null 2>&1; then
       echo -e ">>> [\e[36mNETNS\e[0m] Destroying Namespace: $NETNS_NAME"
-      
-      # 1. Arayüzü root namespace'e geri getir
       ip netns exec "$NETNS_NAME" ip link set dev "$interface" netns 1 2>/dev/null
-      
-      # 2. Namespace içindeki tüm prosesleri öldür (tarayıcı vb.)
       ip netns pids "$NETNS_NAME" | xargs kill -9 2>/dev/null
-      
-      # 3. Namespace'i sil
       ip netns delete "$NETNS_NAME"
-      
-      # 4. Arayüzü tekrar başlat
       sudo ifconfig "$interface" up 2>/dev/null
   fi
 }
@@ -302,8 +294,8 @@ sudo systemctl start squid >/dev/null 2>&1
 sudo bash iptables.sh >/dev/null 2>&1
 
 ultra_ram_only
-ultra_tcp_spoof # eBPF burada yüklenir
-ultra_ai_human # Mouse hareketleri başlar
+ultra_tcp_spoof 
+ultra_ai_human 
 
 echo "Finished Initial Setup. Prophetia Starting Loop..."
 v5 1
