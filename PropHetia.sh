@@ -46,11 +46,33 @@ users=(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36/DiUzeNty-1"
 )
 
-req_programs=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf" "clang" "go" "cfonts")
+req_programs=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf" "clang" "go" "cfonts" "git" "python3")
 
 usage() {
   echo "usage: $0 -c <interface> -t <timeout>"
   exit 1
+}
+traff_noiser() {
+    echo -e ">>> [\e[35mNOISER\e[0m] Checking Traffic Noiser repository..."
+    
+    if [ ! -d "$NOISY_DIR" ]; then
+        mkdir -p "$PWD/bin"
+        if git clone https://github.com/1tayH/noisy "$NOISY_DIR" >/dev/null 2>&1; then
+            echo -e ">>> [\e[32m+\e[0m] Noiser cloned successfully."
+        else
+            echo -e ">>> [\e[31m!\e[0m] Git clone failed."
+        fi
+    else
+        echo -e "ok"
+    fi
+}
+start_noiser() {
+    if [ -f "$NOISY_DIR/noisy.py" ]; then
+        ip netns exec "$NETNS_NAME" sudo python3 "$NOISY_DIR/noisy.py" --config "$NOISY_DIR/config.json" >/dev/null 2>&1 &
+        echo -e "<$time> [\e[35mNOISER\e[0m] Started noise generation in Netns."
+    else
+        echo -e "<$time> [\e[31m!\e[0m] Noisy failed."
+    fi
 }
 
 check() { command -v $1 >/dev/null 2>&1; }
@@ -303,6 +325,7 @@ sudo bash iptables.sh >/dev/null 2>&1
 ultra_ram_only
 ultra_tcp_spoof 
 ultra_ai_human 
+traff_noiser
 
 echo "Finished Initial Setup. Prophetia Starting Loop..."
 v5 1
@@ -337,7 +360,7 @@ while true; do
   user_agent
   echo -e "<$time> [USER-AGENT] Changed: $(ip netns exec "$NETNS_NAME" cat /etc/squid/custom_user_agent | head -n 1)"
   v5 2
-
+  start_noiser
   if ! pgrep -f "librewolf -P prophetia" >/dev/null; then
      browser
   fi
