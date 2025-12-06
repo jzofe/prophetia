@@ -110,10 +110,6 @@ while getopts ":c:t:d:" opt; do
   esac
 done
 
-proxys() {
-  proxies=$(curl -s "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxytype=all&country=all&anonymity=all&ssl=all&timeout=2000")
-  echo "$proxies" > /etc/squid/proxy_list.txt
-}
 ultra_tcp_spoof() {
   [[ -f /sys/fs/bpf/tcp_spoof ]] && return
   cat >/tmp/tcp_spoof.bpf.c <<'EOF'
@@ -157,10 +153,6 @@ ultra_ram_only() {
   sudo swapon /mnt/encram/swapfile
 }
 
-random_proxys() {
-  rand_proxy=$(shuf -n 1 /etc/squid/proxy_list.txt)
-  echo "$rand_proxy" | tr -d '[:space:]'
-}
 
 dhcp() {
   sudo dhclient -r > /dev/null 2>&1
@@ -417,10 +409,6 @@ while true; do
   mitmproxy --mode transparent --modify-headers ":~b'User-Agent:.*' -> 'User-Agent: $(cat /etc/squid/custom_user_agent)'" >/dev/null 2>&1 &
   user_agent
   echo -e "<$time> [USER-AGENT] Changed: $(cat /etc/squid/custom_user_agent)"
-  v5 2
-  proxy=$(random_proxys)
-  sed -i "s/http_port 3128/http_port 3128\nacl my_acl src $proxy/g" /etc/squid/squid.conf
-  echo -e "<$time> [\e[34m\e[1mPROXY\e[0m]  Changed: $proxy"
   v5 2
   echo -e "<$time> [\e[34m\e[1mTOR NETWORK\e[0m]  Encrypted, socks5 dynamic."
   browser
