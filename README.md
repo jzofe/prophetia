@@ -1,11 +1,11 @@
 #     🕶️ PROPHETIA! - ENDER PROJECT [06/12/2025 - Updated!]
 
-## < Internet connection, traffic encryptor.>
+## < KERNEL-LEVEL Internet connection, traffic encryptor.>
 ## <BECOME A PROFESSIONAL ANONYMOUS>
 
 OPEN - SOURCE
 
-Connect to the internet with 15+ layers with PropHetia, no one will be able to track you!.
+Connect to the internet with 14+ layers with PropHetia, no one will be able to track you!.
 
 ## 🛠️ Setup 
 
@@ -35,47 +35,20 @@ sudo PropHetia.sh -c wlan0 -t <timeout (1668 second default)>
 
 ## How does it work? [15 Layer]
 
-- **DNS over HTTPS + TLS**  
-   all DNS queries are forced through encrypted DoH/DoT (Google, Ndo.dev, etc.). Your ISP can’t see what domains you visit.
-
-- **MAC address spoofing**  
-   every cycle your Wi-Fi/Ethernet MAC is replaced with a random address from 21 real hardware vendors (cisco, sony, samsung, apple, etc.). you look like a completely different device.
-
--  **DHCP lease renewal**  
-   `dhclient -r` + new request → fresh IP address every cycle. your public ip changes constantly.
-
-- **Router spoofing (IPv4 + IPv6)**  
-   `spoofer.py` injects fake hops using real IPs belonging to Facebook, Google, NSA, Cloudflare, etc. Run `traceroute google.com`. it looks like your traffic bounces through their infrastructure.
-
-- **10 rotating default gateways**  
-   default route jumps between 10 different public IPs (AdGuard, Quad9, Cloudflare, etc.) every cycle.
-
--  **eBPF/XDP kernel-level TCP fingerprint spoofing**  
-   a custom eBPF program is loaded into the kernel. every outgoing tcp packet gets randomised TTL, window size, tcp options, and sequence numbers. tools like p0f, nmap, shodan, or any DPI system see a different OS/fingerprint every few seconds.
-
--  **Encrypted in-memory swap only**  
-   physical swap is killed. a 2 GB encrypted tmpfs + dm-crypt RAM disk is created and used as swap. nothing ever touches the hard drive.
-
--  **New network namespace every cycle**  
-   qubes-OS style isolation: a fresh network namespace + veth pair is created on every loop. even if something leaks, it dies with the namespace.
-
--  **Tor → I2P → Lokinet → Yggdrasil chain**  
-   traffic is forced through proxychains with dynamic_chain: tor (9050) → I2P (4447) → Lokinet (1090) → Yggdrasil (20001). four completely different anonymous networks stacked on top of each other.
-
--  **LibreWolf in firejail sandbox**  
-    a hardened “prophetia” profile is created and launched inside firejail --private. all telemetry, pings, beacons, and tracking protection are disabled by default.
-
--  **AI-powered human behavior randomizer**  
-    an infinite background loop gently moves the mouse in natural curves, clicks randomly, and types random characters at human-like speeds. canvas, webGL, and behavioral fingerprinting services think you’re a real person.
-
-- **21-pass forensic-proof log wiping**  
-    every cycle: journalctl vacuumed + every log file in /var/log/* + ~/.bash_history + /tmp + /var/tmp shredded with 21 passes (DoD 5220.22-M standard). Forensic recovery is impossible.
-
--  **Random hostname & timezone**  
-   hostname becomes something like “ghost-x7f9a2k1p3” and timezone jumps between New York, London, Tokyo, Johannesburg, etc.
-
--  **User-Agent rotation + mitmproxy header rewriting**  
-    random UA from a large real-device pool, rewritten on the fly by mitmproxy in transparent mode.
+layer1: all DNS queries are forced through encrypted DoH/DoT (Google, Ndo.dev, etc.). Your ISP can’t see what domains you visit. 
+layer2: every cycle your Wi-Fi/Ethernet MAC is replaced with a random address from 21 real hardware vendors (cisco, sony, samsung, apple, etc.). you look like a completely different device.
+layer3: `dhclient -r` + new request → fresh IP address every cycle. your public ip changes constantly.
+layer4: `spoofer.py` injects fake hops using real IPs belonging to Facebook, Google, NSA, Cloudflare, etc. Run `traceroute google.com`. it looks like your traffic bounces through their infrastructure. 
+layer5: default route jumps between 10 different public IPs (AdGuard, Quad9, Cloudflare, etc.) every cycle.
+layer6: a custom eBPF program is loaded into the kernel. every outgoing tcp packet gets randomised TTL, window size, tcp options, and sequence numbers. tools like p0f, nmap, shodan, or any DPI system see a different OS/fingerprint every few seconds.
+layer7: physical swap is killed. a 2 GB encrypted tmpfs + dm-crypt RAM disk is created and used as swap. nothing ever touches the hard drive.
+layer8: qubes-OS style isolation: a fresh network namespace + veth pair is created on every loop. even if something leaks, it dies with the namespace.
+layer9: traffic is forced through proxychains with dynamic_chain: tor (9050) → I2P (4447) → Lokinet (1090) → Yggdrasil (20001). four completely different anonymous networks stacked on top of each other.
+layer10: a hardened “prophetia” profile is created and launched inside firejail --private. all telemetry, pings, beacons, and tracking protection are disabled by default.
+layer11: an infinite background loop gently moves the mouse in natural curves, clicks randomly, and types random characters at human-like speeds. canvas, webGL, and behavioral fingerprinting services think you’re a real person.
+layer12: every cycle: journalctl vacuumed + every log file in /var/log/* + ~/.bash_history + /tmp + /var/tmp shredded with 21 passes (DoD 5220.22-M standard). Forensic recovery is impossible.
+layer13: hostname becomes something like “ghost-x7f9a2k1p3” and timezone jumps between New York, London, Tokyo, Johannesburg, etc.
+layer14: random UA from a large real-device pool, rewritten on the fly by mitmproxy in transparent mode.
 
 result: no stable MAC, no stable IP, no stable TCP fingerprint, no stable DNS history, no stable browser fingerprint, no logs on disk, no swap on disk, no consistent routing path.
 
@@ -97,13 +70,13 @@ you are a fcking ghost that changes identity every few minutes xd
 +-------+------+  |    HTTP cache server /   |  |   HTTP service muxer   |
 |  doh-client  +--+ Content Delivery Network +--+ (Apache, Nginx, Caddy) |
 +--------------+  +--------------------------+  +------------------------+
-               +-- eBPF XDP TCP Spoof (kernel-level mutate) --+
-               +-- Encrypted RAM Swap (no disk write) --+
-               +-- Network Namespace (Qubes isolation) --+
-               +-- Tor/I2P/Lokinet/Ygg Chain (multi-net) --+
-               +-- AI Randomizer (human-like behavior) --+
-               +-- Firejail Sandbox (browser isolation) --+
-               +-- 21-Pass Shred (logs gone forever) --+
+               +-- eBPF XDP TCP Spoof  --+
+               +-- encrypted RAM Swap  --+
+               +-- network Namespace  --+
+               +-- tor/I2P/Lokinet/Ygg Chain --+
+               +-- ai Randomizer --+
+               +-- firejail Sandbox --+
+               +-- 21-Pass Shred --+
 ~~~
 
 
