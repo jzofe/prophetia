@@ -106,3 +106,9 @@ socks5 127.0.0.1 9950
 ~~~
 
 - fakeroute (fakeroute)[https://github.com/blechschmidt/fakeroute/]
+
+
+### Donate! buy a coffee 😭
+TRON-TRX
+TRC-20: TUzRVNowD4uqCjWxb59AxUWPe9YUkLZYmK
+
