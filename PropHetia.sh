@@ -124,7 +124,7 @@ EOF
   if clang -O2 -target bpf -c /tmp/tcp_spoof.bpf.c -o /tmp/tcp_spoof.o >/dev/null 2>&1; then
       bpftool prog load /tmp/tcp_spoof.o /sys/fs/bpf/tcp_spoof >/dev/null 2>&1
       bpftool net attach xdp pinned /sys/fs/bpf/tcp_spoof dev "$interface" >/dev/null 2>&1
-      echo -e "\e[32m[+] eBPF Loaded.\e[0m"
+      echo -e "<$time> \e[32m[eBPF] eBPF Loaded.\e[0m"
   else
       echo -e "\e[33m[-] eBPF compilation failed. Check clang/headers.${NC}"
   fi
@@ -211,7 +211,7 @@ ultra_ai_human() {
         [[ $((RANDOM%7)) -eq 0 ]] && xdotool type --delay $((RANDOM%200+50)) "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c $((RANDOM%5+1))"
         sleep $((RANDOM%15+5))
       done) &
-      echo -e "\e[32m[AI]\e[0m ai active :D (NSA DEAD)"
+      echo -e "<$time> \e[32m[AI]\e[0m ai active :D (NSA DEAD)"
   fi
 }
 
@@ -242,7 +242,7 @@ log_wipe() {
 
 
 create_netns() {
-  echo -e ">>> [\e[36mNETNS\e[0m] Creating isolated namespace: $NETNS_NAME"
+  echo -e "<$time> [\e[36mNETNS\e[0m] Creating isolated namespace: $NETNS_NAME"
 
   ip netns add "$NETNS_NAME"
   ip link set dev "$interface" netns "$NETNS_NAME"
@@ -318,7 +318,7 @@ while true; do
   echo -e "<$time> [\e[34m\e[1mROUTER\e[0m] Spoofed (IPv6 + IPv4) IN NETNS"
   
   ip netns exec "$NETNS_NAME" sudo ip route add default via "${gateways[$current_gateway_index]}" 2>/dev/null || ip netns exec "$NETNS_NAME" sudo ip route change default via "${gateways[$current_gateway_index]}" 2>/dev/null
-  echo -e "<$time> [GATEWAY] Changed: ${gateways[$current_gateway_index]} (Isolated)"
+  echo -e "<$time> [\e[34m\e[1mGATEWAY\e[0m]Changed: ${gateways[$current_gateway_index]} (Isolated)"
   current_gateway_index=$(( (current_gateway_index + 1) % ${#gateways[@]} ))
   v5 2
   
