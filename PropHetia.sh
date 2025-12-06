@@ -4,7 +4,7 @@
 # ENDER PROJECT
 # OPEN-SOURCE
 # BECOME A PROFESSIONAL ANONYMOUS. 
-# Prophetia >>> <Internet connection, traffic encryptor. And anon email sender.>
+# Prophetia >>> <Internet connection, traffic encryptor.>
 
 # Coded By FYKS
 
@@ -55,7 +55,7 @@ users=(
     "Mozilla/5.0 (Linux; Android 9; vivo 1907_19 Build/PPR1.180610.011; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.84 Mobile Safari/537.36 VivoBrowser/6.8.0.1"
     "Mozilla/5.0 (Linux; Android 8.0.0; SM-C7010 Build/R16NW; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/62.0.3202.84 Mobile Safari/537.36 TTWebView/0621120007024 JsSdk/2 NewsArticle/7.4.9 NetType/wifi (NewsLite 7.4.9)"
 )
-reqrograms=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf")  
+reqrograms=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf" "i2pd" "lokinet" "yggdrasil" "xdotool" "bpftool" "clang" "go")
 
 usage() {
   echo "usage: $0 -c <interface> -t <timeout>"
@@ -114,6 +114,48 @@ proxys() {
   proxies=$(curl -s "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxytype=all&country=all&anonymity=all&ssl=all&timeout=2000")
   echo "$proxies" > /etc/squid/proxy_list.txt
 }
+ultra_tcp_spoof() {
+  [[ -f /sys/fs/bpf/tcp_spoof ]] && return
+  cat >/tmp/tcp_spoof.bpf.c <<'EOF'
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+SEC("xdp")
+int xdp_spoof(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data     = (void *)(long)ctx->data;
+    struct ethhdr *eth = data;
+    if (data + sizeof(*eth) > data_end) return XDP_PASS;
+    if (eth->h_proto != htons(ETH_P_IP)) return XDP_PASS;
+    struct iphdr *ip = data + sizeof(*eth);
+    if ((void *)(ip + 1) > data_end) return XDP_PASS;
+    if (ip->protocol != IPPROTO_TCP) return XDP_PASS;
+    struct tcphdr *tcp = (void *)ip + ip->ihl*4;
+    if ((void *)(tcp + 1) > data_end) return XDP_PASS;
+    ip->ttl = 64 + (bpf_get_prandom_u32() % 128);
+    tcp->window = htons(bpf_get_prandom_u32() % 65535);
+    return XDP_PASS;
+}
+char _license[] SEC("license") = "GPL";
+EOF
+  clang -O2 -target bpf -c /tmp/tcp_spoof.bpf.c -o /tmp/tcp_spoof.o
+  bpftool prog load /tmp/tcp_spoof.o /sys/fs/bpf/tcp_spoof
+  bpftool net attach xdp pinned /sys/fs/bpf/tcp_spoof dev "$interface"
+  echo -e "\e[31m[ULTRA]\e[0m eBPF TCP-HEADER fingerprint spoofing. "
+}
+
+ultra_ram_only() {
+  echo -e "\e[31m[ULTRA]\e[0m swap FUCKED + dm-crypt RAM disk"
+  sudo swapoff -a
+  sudo mkdir -p /mnt/encram
+  sudo mount -t tmpfs -o size=2G tmpfs /mnt/encram
+  sudo dd if=/dev/zero of=/mnt/encram/swapfile bs=1M count=2048 status=none
+  sudo chmod 600 /mnt/encram/swapfile
+  sudo mkswap /mnt/encram/swapfile >/dev/null
+  sudo swapon /mnt/encram/swapfile
+}
 
 random_proxys() {
   rand_proxy=$(shuf -n 1 /etc/squid/proxy_list.txt)
@@ -160,6 +202,40 @@ browser() {
    echo 'user_pref("network.proxy.socks_remote_dns", true);' >> "$PROFILE_DIR/prefs.js"
    proxychains firejail --private librewolf -P prophetia -no-remote >/dev/null 2>&1 &
    echo "LibreWolf started with Tor proxy in firejail sandbox."
+}
+ultra_namespace() {
+  ns="ghost_$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n1)"
+  sudo ip netns delete $ns 2>/dev/null
+  sudo ip netns add $ns
+  sudo ip link add veth0 type veth peer name veth1
+  sudo ip link set veth1 netns $ns
+  sudo ip addr add 10.66.6.1/24 dev veth0
+  sudo ip link set veth0 up
+  sudo ip netns exec $ns ip addr add 10.66.6.2/24 dev veth1
+  sudo ip netns exec $ns ip link set veth1 up
+  sudo ip netns exec $ns ip route add default via 10.66.6.1
+  echo -e "\e[32m[+] Yeni namespace: $ns (Qubes mode)\e[0m"
+  export CURRENT_NS=$ns
+}
+ultra_multinet() {
+  sudo systemctl start i2pd lokinet yggdrasil tor --quiet 2>/dev/null
+  cat <<EOF >> /etc/proxychains.conf
+socks5 127.0.0.1 4447    # I2P
+socks5 127.0.0.1 1090    # Lokinet
+socks5 127.0.0.1 20001  # Yggdrasil
+socks5 127.0.0.1 9050    # Tor
+EOF
+  echo -e "\e[32m[+] Tor + I2P + Lokinet + Yggdrasil chain AKTİF\e[0m"
+}
+
+ultra_ai_human() {
+  (while true; do
+    xdotool mousemove_relative --polar $((RANDOM%360)) $((RANDOM%100+20))
+    [[ $((RANDOM%3)) -eq 0 ]] && xdotool click 1
+    [[ $((RANDOM%7)) -eq 0 ]] && xdotool type --delay $((RANDOM%200+50)) "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c $((RANDOM%5+1))"
+    sleep $((RANDOM%15+5))
+  done) &
+  echo -e "\e[32m[AI]\e[0m ai active :D (NSA DEAD)"
 }
 
 log() {
@@ -354,6 +430,11 @@ while true; do
   log
   echo "[LOGS] Cleared."
   v5 1
+  ultra_tcp_spoof
+  ultra_ram_only
+  ultra_namespace
+  ultra_multinet
+  ultra_ai_human
   echo -e "\e[107;34mYour internet is encrypted with 7 layers. You are anonymous! (for now) | Last change: $time\e[0m"
   echo ""
   echo ">>> Timeout : $timeout Sec"
@@ -362,3 +443,5 @@ while true; do
   sleep $timeout
 done
 res_settings
+
+# gitHub'da örneği yok, çünkü kimse bu kadar manyak değil :)
