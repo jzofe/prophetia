@@ -184,6 +184,22 @@ mac_change() {
   sudo macchanger -m $full_mac_address $interface > /dev/null 2>&1
   sudo ifconfig $interface up > /dev/null 2>&1
 }
+mtu_jitter() {
+    RANDOM_MTU=$(( RANDOM % 101 + 1400 )) 
+    ip netns exec "$NETNS_NAME" sudo ip link set dev "$interface" mtu "$RANDOM_MTU" >/dev/null 2>&1
+    echo -e "<$time> [\e[34mMTU\e[0m] Changed to $RANDOM_MTU (Inside Netns)."
+}
+
+ultra_sysctl_harden() {
+    echo -e "<$time> [\e[33mKERNEL\e[0m] Applying Sysctl Hardening..."
+    
+    ip netns exec "$NETNS_NAME" sysctl -w net.ipv4.icmp_echo_ignore_all=1 >/dev/null 2>&1
+    ip netns exec "$NETNS_NAME" sysctl -w net.ipv4.tcp_timestamps=0 >/dev/null 2>&1
+    ip netns exec "$NETNS_NAME" sysctl -w net.ipv4.conf.all.accept_redirects=0 >/dev/null 2>&1
+    ip netns exec "$NETNS_NAME" sysctl -w net.ipv4.conf.all.send_redirects=0 >/dev/null 2>&1
+    
+    echo -e "<$time> [\e[33mKERNEL\e[0m] Sysctl hardened (ICMP, Timestamps Disabled)."
+}
 
 user_agent() {
   rand_index=$(( RANDOM % ${#users[@]} ))
@@ -303,7 +319,8 @@ while true; do
   v5 1
   create_netns
   v5 1
-  
+  ultra_sysctl_harden 
+  mtu_jitter
   clock_jitter
   ip netns exec "$NETNS_NAME" sudo doh-client >/dev/null 2>&1 &
   ip netns exec "$NETNS_NAME" sudo systemctl start tor >/dev/null 2>&1
@@ -327,7 +344,7 @@ while true; do
   
   log_wipe
   
-  echo -e "\e[107;34mYour internet is encrypted with 7 layers. You are anonymous! (for now) | Last change: $time\e[0m"
+  echo -e "\e[107;34mYour internet is encrypted with 15 layers. You are anonymous! (for now) | Last change: $time\e[0m"
   echo ""
   echo ">>> Isolated in Netns: $NETNS_NAME | Timeout : $timeout Sec"
 
