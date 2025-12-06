@@ -1,45 +1,36 @@
 #!/bin/bash
 
-
 # ENDER PROJECT
+
 # OPEN-SOURCE
 # BECOME A PROFESSIONAL ANONYMOUS. 
 # Prophetia >>> <Internet connection, traffic encryptor.>
 
-# Coded By FYKS
+
+# Coded By FYKS 
+
 if [ "$EUID" -ne 0 ]; then
   echo "Permission required. Type 'sudo bash prophetia.sh -c <interface> -t 600'."
   exit 1
 fi
 
+NETNS_NAME="prophetia_netns"
 dohpage="/etc/dns-over-https/doh-client.conf"
 interface="" 
 timeout="1200"
 disk="/dev/sda1" 
+
 gateway1="94.140.14.14"
-
 gateway2="149.112.112.112"
-
 gateway3="84.200.69.80"
-
 gateway4="37.235.1.174"
-
 gateway5="84.200.70.40"
-
 gateway6="194.36.144.87"
-
 gateway7="51.77.149.139"
-
 gateway8="94.247.43.254"
-
 gateway9="125.18.1.10"
-
 gateway10="94.247.43.254"
-
 gateways=("$gateway1" "$gateway2" "$gateway3" "$gateway4" "$gateway5" "$gateway6" "$gateway7" "$gateway8" "$gateway9" "$gateway10")
-
-current_gateway_index=0 
-gateways=("94.140.14.14" "149.112.112.112" "84.200.69.80" "37.235.1.174" "1.1.1.1" "9.9.9.9")
 current_gateway_index=0
 
 users=(
@@ -77,7 +68,6 @@ usage() {
 
 check() { command -v $1 >/dev/null 2>&1; }
 
-# Argümanları Parse Et
 while getopts ":c:t:d:" opt; do  
   case ${opt} in
     c ) interface=$OPTARG ;;
@@ -103,12 +93,42 @@ done
 
 ultra_tcp_spoof() {
   echo -e "\e[31m[ULTRA]\e[0m eBPF TCP-HEADER fingerprint spoofing..."
+  
+  cat >/tmp/tcp_spoof.bpf.c <<'EOF'
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+
+SEC("xdp")
+int xdp_spoof(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data     = (void *)(long)ctx->data;
+    struct ethhdr *eth = data;
+    if (data + sizeof(*eth) > data_end) return XDP_PASS;
+    if (eth->h_proto != htons(ETH_P_IP)) return XDP_PASS;
+    struct iphdr *ip = data + sizeof(*eth);
+    if ((void *)(ip + 1) > data_end) return XDP_PASS;
+    if (ip->protocol != IPPROTO_TCP) return XDP_PASS;
+    struct tcphdr *tcp = (void *)ip + ip->ihl*4;
+    if ((void *)(tcp + 1) > data_end) return XDP_PASS;
+    
+    // Randomize TTL
+    ip->ttl = 64 + (bpf_get_prandom_u32() % 60);
+    // Randomize TCP Window Size
+    tcp->window = htons(10000 + (bpf_get_prandom_u32() % 50000));
+    return XDP_PASS;
+}
+char _license[] SEC("license") = "GPL";
+EOF
+
   if clang -O2 -target bpf -c /tmp/tcp_spoof.bpf.c -o /tmp/tcp_spoof.o >/dev/null 2>&1; then
       bpftool prog load /tmp/tcp_spoof.o /sys/fs/bpf/tcp_spoof >/dev/null 2>&1
       bpftool net attach xdp pinned /sys/fs/bpf/tcp_spoof dev "$interface" >/dev/null 2>&1
       echo -e "\e[32m[+] eBPF Loaded.\e[0m"
   else
-      echo -e "\e[33m[-] eBPF compilation failed. Check clang/headers.\e[0m"
+      echo -e "\e[33m[-] eBPF compilation failed. Check clang/headers.${NC}"
   fi
 }
 
@@ -122,39 +142,25 @@ ultra_ram_only() {
 }
 
 routerspoof() {
-    INTERFACE_MAC=$(cat /sys/class/net/$interface/address)
-    ROUTER_IP=$(ip route show default | awk '/default/ {print $3}' | head -1)
+    INTERFACE_MAC=$(ip netns exec "$NETNS_NAME" cat /sys/class/net/$interface/address)
+    ROUTER_IP=$(ip netns exec "$NETNS_NAME" ip route show default | awk '/default/ {print $3}' | head -1)
     if [ -z "$ROUTER_IP" ]; then ROUTER_IP="192.168.1.1"; fi
     
-    ROUTER_MAC=$(ip neigh show "$ROUTER_IP" | awk '{print $5}' | head -1)
+    ROUTER_MAC=$(ip netns exec "$NETNS_NAME" ip neigh show "$ROUTER_IP" | awk '{print $5}' | head -1)
     if [ -z "$ROUTER_MAC" ]; then ROUTER_MAC="ff:ff:ff:ff:ff:ff"; fi
 
-    sudo python3 spoofer.py --interface "$interface" --router-mac "$ROUTER_MAC" --src-mac "$INTERFACE_MAC" >/dev/null 2>&1 &
+    ip netns exec "$NETNS_NAME" sudo python3 spoofer.py --interface "$interface" --router-mac "$ROUTER_MAC" --src-mac "$INTERFACE_MAC" >/dev/null 2>&1 &
 }
 
 browser() {
-   sudo systemctl start tor
-   if ! grep -q "socks5 127.0.0.1 9050" /etc/proxychains.conf; then
-       echo "socks5 127.0.0.1 9050" >> /etc/proxychains.conf
-   fi
-
-   rm -rf ~/.librewolf/*prophetia* 2>/dev/null
-   librewolf -CreateProfile "prophetia" >/dev/null 2>&1
-   PROFILE_DIR=$(find ~/.librewolf -name "*prophetia" -type d | head -1)
-   
-   if [ -n "$PROFILE_DIR" ]; then
-       echo 'user_pref("privacy.donottrackheader.enabled", true);' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("privacy.clearOnShutdown.cookies", true);' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("privacy.clearOnShutdown.history", true);' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("browser.send_pings", false);' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("network.proxy.type", 1);' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("network.proxy.socks", "127.0.0.1");' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("network.proxy.socks_port", 9050);' >> "$PROFILE_DIR/prefs.js"
-       echo 'user_pref("network.proxy.socks_remote_dns", true);' >> "$PROFILE_DIR/prefs.js"
-   fi
-   
-   echo "[LIBREWOLF] Started with Tor proxy in firejail sandbox."
-   proxychains firejail --private --dns=127.0.0.1 librewolf -P prophetia -no-remote >/dev/null 2>&1 &
+    ip netns exec "$NETNS_NAME" sudo systemctl start tor
+    
+    if ! ip netns exec "$NETNS_NAME" grep -q "socks5 127.0.0.1 9050" /etc/proxychains.conf; then
+        ip netns exec "$NETNS_NAME" echo "socks5 127.0.0.1 9050" >> /etc/proxychains.conf
+    fi
+    
+    echo "[LIBREWOLF] Started with Tor proxy in firejail sandbox (Inside $NETNS_NAME)."
+    ip netns exec "$NETNS_NAME" proxychains firejail --private --dns=127.0.0.1 librewolf -P prophetia -no-remote >/dev/null 2>&1 &
 }
 
 mac_change() {
@@ -196,7 +202,7 @@ mac_change() {
 
 user_agent() {
   rand_index=$(( RANDOM % ${#users[@]} ))
-  echo "${users[$rand_index]}" | sudo tee /etc/squid/custom_user_agent >/dev/null
+  echo "${users[$rand_index]}" | ip netns exec "$NETNS_NAME" sudo tee /etc/squid/custom_user_agent >/dev/null
 }
 
 ultra_ai_human() {
@@ -236,9 +242,42 @@ log_wipe() {
     echo "[LOGS] 21-pass shred completed xd (fbi is crying now)"
 }
 
+
+create_netns() {
+  echo -e ">>> [\e[36mNETNS\e[0m] Creating isolated namespace: $NETNS_NAME"
+
+  ip netns add "$NETNS_NAME"
+  ip link set dev "$interface" netns "$NETNS_NAME"
+  ip netns exec "$NETNS_NAME" ip link set dev lo up
+  ip netns exec "$NETNS_NAME" ip link set dev "$interface" up
+  
+  ip netns exec "$NETNS_NAME" sudo dhclient -r "$interface" > /dev/null 2>&1
+  ip netns exec "$NETNS_NAME" sudo dhclient "$interface" > /dev/null 2>&1
+  
+  echo -e ">>> [\e[36mNETNS\e[0m] Interface '$interface' isolated and configured."
+}
+
+destroy_netns() {
+  if ip netns pids "$NETNS_NAME" >/dev/null 2>&1; then
+      echo -e ">>> [\e[36mNETNS\e[0m] Destroying Namespace: $NETNS_NAME"
+      
+      # 1. Arayüzü root namespace'e geri getir
+      ip netns exec "$NETNS_NAME" ip link set dev "$interface" netns 1 2>/dev/null
+      
+      # 2. Namespace içindeki tüm prosesleri öldür (tarayıcı vb.)
+      ip netns pids "$NETNS_NAME" | xargs kill -9 2>/dev/null
+      
+      # 3. Namespace'i sil
+      ip netns delete "$NETNS_NAME"
+      
+      # 4. Arayüzü tekrar başlat
+      sudo ifconfig "$interface" up 2>/dev/null
+  fi
+}
+
 notify() {
   message="Prophetia: Anonymity renewed! Timeout : $timeout"
-  notify-send "Prophetia Notification" "$message"
+  ip netns exec "$NETNS_NAME" notify-send "Prophetia Notification" "$message" 2>/dev/null || true
 }
 
 cleanup() {
@@ -248,35 +287,25 @@ cleanup() {
   rm -f /sys/fs/bpf/tcp_spoof
   killall python3 >/dev/null 2>&1
   killall xdotool >/dev/null 2>&1
+  
+  destroy_netns 
   exit 0
 }
 
 trap cleanup INT TERM
 v5() { sleep "$1"; }
-
 clear
 if command -v cfonts >/dev/null 2>&1; then cfonts Prophetia -a center -f simple3d -c gray; else echo "PROPHETIA"; fi
-echo -e "\e[1m  Prophetia - Be anonymous! | [<enderproject>] \e[0m" 
-echo "< interface: $interface"
-echo "< timeout: $timeout"
-echo ""
-
-# DoH ve Proxy başlatma mantığı
-if command -v doh-client >/dev/null 2>&1; then
-    if ! pgrep -x "doh-client" >/dev/null; then
-        sudo doh-client >/dev/null 2>&1 &
-        echo "<<< DoH active. HTTP/DNS encrypted."
-    fi
-fi
+echo -e "\e[1m  Prophetia - Network Namespace Spoofer | [<enderproject>] \e[0m" 
 
 sudo systemctl start squid >/dev/null 2>&1
 sudo bash iptables.sh >/dev/null 2>&1
 
 ultra_ram_only
-ultra_tcp_spoof
-browser
+ultra_tcp_spoof # eBPF burada yüklenir
+ultra_ai_human # Mouse hareketleri başlar
 
-echo "Finished. Prophetia Starting..."
+echo "Finished Initial Setup. Prophetia Starting Loop..."
 v5 1
 
 while true; do
@@ -285,36 +314,37 @@ while true; do
   if command -v cfonts >/dev/null 2>&1; then cfonts Prophetia -a center -f simple3d -c gray; else echo "PROPHETIA"; fi
   echo -e "\e[1m                                                                                             Prophetia - Be anonymous! | [<enderproject>]\e[0m"  && echo ""
   echo "--time--    --changes--"
-  
+  destroy_netns
   mac_change
   echo -e "<$time> [\e[34m\e[1mMAC\e[0m] Adress changed. New MAC: '\e[31m\e[1m$(macchanger -s $interface | awk '/Current MAC/{print $3}')\e[0m'"
-  v5 2
-
-  sudo dhclient -r > /dev/null 2>&1
-  sudo dhclient > /dev/null 2>&1
-  echo -e "<$time> [\e[34m\e[1mDHCP\e[0m] Renewed."
-  notify-send "Prophetia" "DHCP encrypted!" >/dev/null 2>&1
-  v5 2
-
-  routerspoof
-  echo -e "<$time> [\e[34m\e[1mROUTER\e[0m] Spoofed (IPv6 + IPv4)"
+  v5 1
+  create_netns
+  v5 1
+  ip netns exec "$NETNS_NAME" sudo doh-client >/dev/null 2>&1 &
+  ip netns exec "$NETNS_NAME" sudo systemctl start tor >/dev/null 2>&1
+  ip netns exec "$NETNS_NAME" sudo service squid restart >/dev/null 2>&1
   
-  sudo ip route add default via "${gateways[$current_gateway_index]}" 2>/dev/null || sudo ip route change default via "${gateways[$current_gateway_index]}" 2>/dev/null
-  echo -e "<$time> [GATEWAY] Changed: ${gateways[$current_gateway_index]}"
+  routerspoof
+  echo -e "<$time> [\e[34m\e[1mROUTER\e[0m] Spoofed (IPv6 + IPv4) IN NETNS"
+  
+  ip netns exec "$NETNS_NAME" sudo ip route add default via "${gateways[$current_gateway_index]}" 2>/dev/null || ip netns exec "$NETNS_NAME" sudo ip route change default via "${gateways[$current_gateway_index]}" 2>/dev/null
+  echo -e "<$time> [GATEWAY] Changed: ${gateways[$current_gateway_index]} (Isolated)"
   current_gateway_index=$(( (current_gateway_index + 1) % ${#gateways[@]} ))
   v5 2
   
-  sudo service squid restart >/dev/null 2>&1
   user_agent
-  echo -e "<$time> [USER-AGENT] Changed: $(cat /etc/squid/custom_user_agent)"
+  echo -e "<$time> [USER-AGENT] Changed: $(ip netns exec "$NETNS_NAME" cat /etc/squid/custom_user_agent | head -n 1)"
   v5 2
+
+  if ! pgrep -f "librewolf -P prophetia" >/dev/null; then
+     browser
+  fi
   
   log_wipe
   
-  ultra_ai_human 
   echo -e "\e[107;34mYour internet is encrypted with 7 layers. You are anonymous! (for now) | Last change: $time\e[0m"
   echo ""
-  echo ">>> Timeout : $timeout Sec"
+  echo ">>> Isolated in Netns: $NETNS_NAME | Timeout : $timeout Sec"
 
   notify
   sleep $timeout
