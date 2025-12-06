@@ -101,6 +101,25 @@ ultra_tcp_spoof() {
 #include <linux/ip.h>
 #include <linux/tcp.h>
 
+SEC("xdp")
+int xdp_spoof(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data     = (void *)(long)ctx->data;
+    struct ethhdr *eth = data;
+    if (data + sizeof(*eth) > data_end) return XDP_PASS;
+    if (eth->h_proto != htons(ETH_P_IP)) return XDP_PASS;
+    struct iphdr *ip = data + sizeof(*eth);
+    if ((void *)(ip + 1) > data_end) return XDP_PASS;
+    if (ip->protocol != IPPROTO_TCP) return XDP_PASS;
+    struct tcphdr *tcp = (void *)ip + ip->ihl*4;
+    if ((void *)(tcp + 1) > data_end) return XDP_PASS;
+    
+    ip->ttl = 64 + (bpf_get_prandom_u32() % 60);
+    tcp->window = htons(10000 + (bpf_get_prandom_u32() % 50000));
+    return XDP_PASS;
+}
+char _license[] SEC("license") = "GPL";
+EOF
 
   if clang -O2 -target bpf -c /tmp/tcp_spoof.bpf.c -o /tmp/tcp_spoof.o >/dev/null 2>&1; then
       bpftool prog load /tmp/tcp_spoof.o /sys/fs/bpf/tcp_spoof >/dev/null 2>&1
