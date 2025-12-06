@@ -5,7 +5,7 @@
 
 OPEN - SOURCE
 
-Connect to the internet with 7+ layers with PropHetia, no one will be able to track you!.
+Connect to the internet with 15+ layers with PropHetia, no one will be able to track you!.
 
 ## 🛠️ Setup 
 
