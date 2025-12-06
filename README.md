@@ -6,7 +6,7 @@
 OPEN - SOURCE
 ### SERIOUS WARNING: PROPHETIA IS NOT AN 'ORDINARY' SCRIPT. ONLY USE IT IF YOU KNOW WHAT YOU'RE DOING. YOUR ALL SYSTEM LOGS ARE COMPLETELY DELETED AND OVERWRITTEN. YOUR NETWORK SETTINGS/CONFIG MAY CHANGE!!
 
-Connect to the internet with 15+ layers with PropHetia, no one will be able to track you!.
+Connect to the internet with 15+ layers with PropHetia.
 
 ## 🛠️ Setup 
 
