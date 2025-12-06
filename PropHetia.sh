@@ -163,13 +163,48 @@ browser() {
 }
 
 log() {
-  sudo journalctl --vacuum-size=10M > /dev/null 2>&1
-  sudo truncate -s 0 /var/log/syslog > /dev/null 2>&1
-  sudo truncate -s 0 /var/log/auth.log > /dev/null 2>&1
-  sudo truncate -s 0 /var/log/dmesg > /dev/null 2>&1
-  history -c > /dev/null 2>&1
-}
 
+  sudo journalctl --rotate >/dev/null 2>&1
+  sudo journalctl --vacuum-time=1s >/dev/null 2>&1
+  sudo journalctl --vacuum-size=1M >/dev/null 2>&1
+
+  LOG_FILES=(
+    /var/log/syslog
+    /var/log/auth.log
+    /var/log/kern.log
+    /var/log/dmesg
+    /var/log/messages
+    /var/log/secure
+    /var/log/wtmp
+    /var/log/btmp
+    /var/log/lastlog
+    /var/log/faillog
+    /var/log/daemon.log
+    /var/log/debug
+    /var/log/user.log
+    /var/log/mail.log
+  )
+
+  for logfile in "${LOG_FILES[@]}"; do
+    if [ -f "$logfile" ]; then
+      sudo shred -z -u -v -n 21 "$logfile" 2>/dev/null || \
+      sudo shred -z -u -n 21 "$logfile" 2>/dev/null
+    fi
+  done
+
+  history -c
+  history -w
+  shred -z -u -n 10 ~/.bash_history 2>/dev/null || true
+  shred -z -u -n 10 ~/.zsh_history 2>/dev/null || true
+  shred -z -u -n 10 ~/.python_history 2>/dev/null || true
+
+  sudo find /tmp -type f -exec shred -z -u -n 3 {} \; 2>/dev/null
+  sudo find /var/tmp -type f -exec shred -z -u -n 3 {} \; 2>/dev/null
+
+  sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
+
+  echo "21-pass shred completed xd (fbi is crying now)"
+}
 dns() {
   dig +tcp @$dns_server > /dev/null 2>&1
 }
