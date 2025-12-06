@@ -58,7 +58,7 @@ users=(
 reqrograms=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf")  
 
 usage() {
-  echo "usage: $0 -c <interface> -d <disk> -t <timeout>"
+  echo "usage: $0 -c <interface> -t <timeout>"
   exit 1
 }
 
@@ -264,7 +264,6 @@ if ! systemctl is-active doh-client.service >/dev/null 2>&1; then
   make >/dev/null 2>&1
   sudo make install >/dev/null 2>&1
   sudo sed -i '29s#url = "[^"]*"#url = "https://dns.ndo.dev/dns-query"#' "$dohpage"
-  # ... old sed fixes
   sudo systemctl start doh-client.service >/dev/null 2>&1
   sudo systemctl enable doh-client.service >/dev/null 2>&1
 fi
@@ -311,9 +310,9 @@ while true; do
   v5 2
   proxy=$(random_proxys)
   sed -i "s/http_port 3128/http_port 3128\nacl my_acl src $proxy/g" /etc/squid/squid.conf
-  echo -e "<$time> [PROXY] Changed: $proxy"
+  echo -e "<$time> [\e[34m\e[1mPROXY\e[0m]  Changed: $proxy"
   v5 2
-  echo -e "<$time> [TOR] Encrypted, socks5 dynamic."
+  echo -e "<$time> [\e[34m\e[1mTOR NETWORK\e[0m]  Encrypted, socks5 dynamic."
   browser
   echo "[LIBREWOLF] Started with Tor in firejail."
   v5 4
