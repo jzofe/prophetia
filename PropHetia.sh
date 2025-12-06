@@ -278,7 +278,7 @@ log() {
 
   sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
 
-  echo "21-pass shred completed xd (fbi is crying now)"
+  echo "[LOGS] 21-pass shred completed xd (fbi is crying now)"
 }
 dns() {
   dig +tcp @$dns_server > /dev/null 2>&1
