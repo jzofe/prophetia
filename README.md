@@ -5,7 +5,7 @@
 
 OPEN - SOURCE
 
-Connect to the internet with 14+ layers with PropHetia, no one will be able to track you!.
+Connect to the internet with 15+ layers with PropHetia, no one will be able to track you!.
 
 ## 🛠️ Setup 
 
@@ -33,7 +33,7 @@ And
 sudo PropHetia.sh -c wlan0 -t <timeout (1668 second default)>
 ~~~
 
-## How does it work? [14 Layer]
+## How does it work? [15 Layer]
 
 layer1: all DNS queries are forced through encrypted DoH/DoT (Google, Ndo.dev, etc.). Your ISP can’t see what domains you visit. 
 
@@ -62,6 +62,8 @@ layer12: every cycle: journalctl vacuumed + every log file in /var/log/* + ~/.ba
 layer13: hostname becomes something like “ghost-x7f9a2k1p3” and timezone jumps between New York, London, Tokyo, Johannesburg, etc.
 
 layer14: random UA from a large real-device pool, rewritten on the fly by mitmproxy in transparent mode.
+
+layer15: the system clock inside the namespace is randomized by ±50 milliseconds, preventing tracking via ntp/clock skew analysis.
 
 result: no stable MAC, no stable IP, no stable TCP fingerprint, no stable DNS history, no stable browser fingerprint, no logs on disk, no swap on disk, no consistent routing path.
 
