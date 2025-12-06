@@ -227,7 +227,66 @@ user_agent() {
   rand_index=$(( RANDOM % ${#users[@]} ))
   echo "${users[$rand_index]}" | ip netns exec "$NETNS_NAME" sudo tee /etc/squid/custom_user_agent >/dev/null
 }
+log_spoof() {
+    echo -e "<$time> [\e[33mLOG\e[0m] Generating realistic, dense fake logs..."
 
+    history -c
+    
+    FAKE_COMMANDS=(
+        "sudo apt update && sudo apt upgrade -y"
+        "nano /etc/ssh/sshd_config"
+        "python3 deploy_script.py --env=staging"
+        "ping 10.0.0.1 -c 5"
+        "git pull origin main"
+        "docker ps -a"
+        "cd /var/www/html"
+        "vim .env"
+        "grep -r 'TODO' ."
+        "ip a"
+        "systemctl status nginx"
+    )
+    
+    for i in $(seq 1 $((RANDOM % 15 + 10))); do
+        TIMESTAMP=$(date +%s -d "$((i-10)) days ago")
+        COMMAND="${FAKE_COMMANDS[$RANDOM % ${#FAKE_COMMANDS[@]}]}"
+        echo "#$TIMESTAMP" >> ~/.bash_history
+        echo "$COMMAND" >> ~/.bash_history
+    done
+    
+    history -w 
+
+    LOG_FILES=("/var/log/auth.log" "/var/log/syslog" "/var/log/kern.log")
+    
+    truncate -s 0 /var/log/wtmp 2>/dev/null
+    truncate -s 0 /var/log/btmp 2>/dev/null
+
+    for logfile in "${LOG_FILES[@]}"; do
+        if [ -f "$logfile" ]; then
+            sudo shred -z -u -n 5 "$logfile" 2>/dev/null
+
+            FAKE_LINES=""
+            for j in $(seq 1 $((RANDOM % 50 + 10))); do 
+                FAKE_DATE=$(date -d "$((RANDOM % 7)) days ago" "+%b %d %H:%M:%S")
+                
+                case $((RANDOM % 4)) in
+                    0) LINE="host systemd[1]: Starting Session $j of user randomuser." ;;
+                    1) LINE="host kernel: [  2.000000] usb 1-1: new high-speed USB device number $j using xhci_hcd" ;;
+                    2) LINE="host sshd[999$j]: Accepted password for randomuser from 192.168.1.10 port 5$j ssh2" ;;
+                    3) LINE="host CRON[1$j]: (randomuser) CMD (/usr/bin/some-maintenance-script)" ;;
+                esac
+                FAKE_LINES="$FAKE_LINES\n$FAKE_DATE $LINE"
+            done
+            echo -e "$FAKE_LINES" | sudo tee "$logfile" >/dev/null
+            sudo logrotate -f /etc/logrotate.conf 2>/dev/null || true
+            echo -e "    [Log: $logfile] Faked and rotated."
+        fi
+    done
+    
+    sudo sync
+    echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
+    
+    echo "[LOGS] Sophisticated log spoofing complete. System appears normal."
+}
 ultra_ai_human() {
   if command -v xdotool >/dev/null 2>&1; then
       (while true; do
@@ -366,7 +425,7 @@ while true; do
   fi
   
   log_wipe
-  
+  log_spoof
   echo -e "\e[107;34mYour internet is encrypted with 15 layers. You are anonymous! (for now) | Last change: $time\e[0m"
   echo ""
   echo ">>> Isolated in Netns: $NETNS_NAME | Timeout : $timeout Sec"
