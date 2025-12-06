@@ -7,29 +7,41 @@
 # Prophetia >>> <Internet connection, traffic encryptor.>
 
 # Coded By FYKS
-
 if [ "$EUID" -ne 0 ]; then
-  echo "Permission required. Type 'sudo Prophetia.sh'."
+  echo "Permission required. Type 'sudo bash prophetia.sh -c <interface> -t 600'."
   exit 1
 fi
 
 dohpage="/etc/dns-over-https/doh-client.conf"
-interface="wlan0"
-dns_server="dns://84.200.69.80"
-timeout="1668"
+interface="" 
+timeout="1200"
 disk="/dev/sda1" 
 gateway1="94.140.14.14"
+
 gateway2="149.112.112.112"
+
 gateway3="84.200.69.80"
+
 gateway4="37.235.1.174"
+
 gateway5="84.200.70.40"
+
 gateway6="194.36.144.87"
+
 gateway7="51.77.149.139"
+
 gateway8="94.247.43.254"
+
 gateway9="125.18.1.10"
+
 gateway10="94.247.43.254"
+
 gateways=("$gateway1" "$gateway2" "$gateway3" "$gateway4" "$gateway5" "$gateway6" "$gateway7" "$gateway8" "$gateway9" "$gateway10")
+
+current_gateway_index=0 
+gateways=("94.140.14.14" "149.112.112.112" "84.200.69.80" "37.235.1.174" "1.1.1.1" "9.9.9.9")
 current_gateway_index=0
+
 users=(
     "Mozilla/5.0 (Linux; Android 6.0.1; XR6M10 Build/XR6M10.03.99.01.04) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.98 Mobile Safari/537.36"
     "Mozilla/5.0 (Linux; U; Android 10; in-id; RMX1971 Build/QKQ1.190918.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/70.0.3538.80 Mobile Safari/537.36 HeyTapBrowser/45.7.2.5"
@@ -55,257 +67,120 @@ users=(
     "Mozilla/5.0 (Linux; Android 9; vivo 1907_19 Build/PPR1.180610.011; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.84 Mobile Safari/537.36 VivoBrowser/6.8.0.1"
     "Mozilla/5.0 (Linux; Android 8.0.0; SM-C7010 Build/R16NW; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/62.0.3202.84 Mobile Safari/537.36 TTWebView/0621120007024 JsSdk/2 NewsArticle/7.4.9 NetType/wifi (NewsLite 7.4.9)"
 )
-reqrograms=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf" "i2pd" "lokinet" "yggdrasil" "xdotool" "bpftool" "clang" "go")
+
+req_programs=("mitmproxy" "macchanger" "squid" "proxychains" "tor" "wireguard" "firejail" "librewolf" "clang" "go" "cfonts")
 
 usage() {
   echo "usage: $0 -c <interface> -t <timeout>"
   exit 1
 }
 
-check() {
-  command -v $1 >/dev/null 2>&1
-}
+check() { command -v $1 >/dev/null 2>&1; }
 
-install() {
-  clear
-  echo "Installing $1.."
-  if [ -x "$(command -v apt-get)" ]; then
-    sudo apt-get install -y $1 >/dev/null 2>&1
-  elif [ -x "$(command -v pacman)" ]; then
-    sudo pacman -S --noconfirm $1 >/dev/null 2>&1
-  else
-    echo "Unsupported package manager. install '$1' manually."
-    exit 1
-  fi
-}
-
-for program in "${reqrograms[@]}"; do
-  if check $program; then
-    echo "$program ok."
-  else
-    install $program
-  fi
-done
-
+# Argümanları Parse Et
 while getopts ":c:t:d:" opt; do  
   case ${opt} in
-    c )
-      interface=$OPTARG
-      sudo sed -i "35s/IFACE = \".*\"/IFACE = \"$interface\"/" spoofer.py
-      ;;
-    d )
-      disk=$OPTARG
-      ;;
-    t )
-      timeout=$OPTARG
-      ;;
-    \? )
-      echo "Invalid option: -$OPTARG" 1>&2
-      usage
-      ;;
-    : )
-      echo "Option -$OPTARG requires an argument." 1>&2
-      usage
-      ;;
+    c ) interface=$OPTARG ;;
+    d ) disk=$OPTARG ;;
+    t ) timeout=$OPTARG ;;
+    \? ) usage ;;
+    : ) usage ;;
   esac
 done
 
+if [ -z "$interface" ]; then
+    echo "Error: Interface (-c) is required. Example: -c wlan0"
+    usage
+fi
+
+for program in "${req_programs[@]}"; do
+  if ! check $program; then
+    echo "Missing: $program. Please run 'sudo bash setup.sh' first."
+    exit 1
+  fi
+done
+
+
 ultra_tcp_spoof() {
-  [[ -f /sys/fs/bpf/tcp_spoof ]] && return
-  cat >/tmp/tcp_spoof.bpf.c <<'EOF'
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/tcp.h>
-SEC("xdp")
-int xdp_spoof(struct xdp_md *ctx) {
-    void *data_end = (void *)(long)ctx->data_end;
-    void *data     = (void *)(long)ctx->data;
-    struct ethhdr *eth = data;
-    if (data + sizeof(*eth) > data_end) return XDP_PASS;
-    if (eth->h_proto != htons(ETH_P_IP)) return XDP_PASS;
-    struct iphdr *ip = data + sizeof(*eth);
-    if ((void *)(ip + 1) > data_end) return XDP_PASS;
-    if (ip->protocol != IPPROTO_TCP) return XDP_PASS;
-    struct tcphdr *tcp = (void *)ip + ip->ihl*4;
-    if ((void *)(tcp + 1) > data_end) return XDP_PASS;
-    ip->ttl = 64 + (bpf_get_prandom_u32() % 128);
-    tcp->window = htons(bpf_get_prandom_u32() % 65535);
-    return XDP_PASS;
-}
-char _license[] SEC("license") = "GPL";
-EOF
-  clang -O2 -target bpf -c /tmp/tcp_spoof.bpf.c -o /tmp/tcp_spoof.o
-  bpftool prog load /tmp/tcp_spoof.o /sys/fs/bpf/tcp_spoof
-  bpftool net attach xdp pinned /sys/fs/bpf/tcp_spoof dev "$interface"
-  echo -e "\e[31m[ULTRA]\e[0m eBPF TCP-HEADER fingerprint spoofing. "
+  echo -e "\e[31m[ULTRA]\e[0m eBPF TCP-HEADER fingerprint spoofing..."
+  if clang -O2 -target bpf -c /tmp/tcp_spoof.bpf.c -o /tmp/tcp_spoof.o >/dev/null 2>&1; then
+      bpftool prog load /tmp/tcp_spoof.o /sys/fs/bpf/tcp_spoof >/dev/null 2>&1
+      bpftool net attach xdp pinned /sys/fs/bpf/tcp_spoof dev "$interface" >/dev/null 2>&1
+      echo -e "\e[32m[+] eBPF Loaded.\e[0m"
+  else
+      echo -e "\e[33m[-] eBPF compilation failed. Check clang/headers.\e[0m"
+  fi
 }
 
 ultra_ram_only() {
   echo -e "\e[31m[ULTRA]\e[0m swap FUCKED + dm-crypt RAM disk"
   sudo swapoff -a
-  sudo mkdir -p /mnt/encram
-  sudo mount -t tmpfs -o size=2G tmpfs /mnt/encram
-  sudo dd if=/dev/zero of=/mnt/encram/swapfile bs=1M count=2048 status=none
-  sudo chmod 600 /mnt/encram/swapfile
-  sudo mkswap /mnt/encram/swapfile >/dev/null
-  sudo swapon /mnt/encram/swapfile
-}
-
-
-dhcp() {
-  sudo dhclient -r > /dev/null 2>&1
-  sudo dhclient > /dev/null 2>&1
-}
-
-get_mac() {
- sudo ifconfig "$1" | awk '/ether/ {print $2}'
+  if [ ! -d "/mnt/encram" ]; then
+      sudo mkdir -p /mnt/encram
+      sudo mount -t tmpfs -o size=1G tmpfs /mnt/encram
+  fi
 }
 
 routerspoof() {
-    INTERFACE_MAC=$(get_mac "$interface")
-    ROUTER_MAC=$(get_mac "router_interface")  
-    sudo sed -i "32s/ROUTER_MAC = \".*\"/ROUTER_MAC = \"$ROUTER_MAC\"/" spoofer.py
-    sudo sed -i "33s/INTERFACE_MAC = \".*\"/INTERFACE_MAC = \"$INTERFACE_MAC\"/" spoofer.py
-    sudo bash iptables.sh >/dev/null 2>&1
-    sudo python3 spoofer.py >/dev/null 2>&1
+    INTERFACE_MAC=$(cat /sys/class/net/$interface/address)
+    ROUTER_IP=$(ip route show default | awk '/default/ {print $3}' | head -1)
+    if [ -z "$ROUTER_IP" ]; then ROUTER_IP="192.168.1.1"; fi
+    
+    ROUTER_MAC=$(ip neigh show "$ROUTER_IP" | awk '{print $5}' | head -1)
+    if [ -z "$ROUTER_MAC" ]; then ROUTER_MAC="ff:ff:ff:ff:ff:ff"; fi
+
+    sudo python3 spoofer.py --interface "$interface" --router-mac "$ROUTER_MAC" --src-mac "$INTERFACE_MAC" >/dev/null 2>&1 &
 }
 
 browser() {
-   sudo systemctl start tor >/dev/null 2>&1
-   sed -i 's/^strict_chain/dynamic_chain/' /etc/proxychains.conf >/dev/null 2>&1  
-   echo "socks5 127.0.0.1 9050" >> /etc/proxychains.conf >/dev/null 2>&1
-   proxychains librewolf -CreateProfile "prophetia" >/dev/null 2>&1
-   PROFILE_DIR=$(find ~/.librewolf -name "*prophetia" -type d | head -1) 
-   if [ -z "$PROFILE_DIR" ]; then
-     echo "Profile create failed amk."
-     exit 1
+   sudo systemctl start tor
+   if ! grep -q "socks5 127.0.0.1 9050" /etc/proxychains.conf; then
+       echo "socks5 127.0.0.1 9050" >> /etc/proxychains.conf
    fi
-   echo 'user_pref("privacy.donottrackheader.enabled", true);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("privacy.clearOnShutdown.cookies", true);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("privacy.clearOnShutdown.history", true);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("browser.send_pings", false);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("beacon.enabled", false);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("toolkit.telemetry.enabled", false);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("network.proxy.type", 1);' >> "$PROFILE_DIR/prefs.js"  # manual proxy (değiştirilebilirxd ama önermiyom gencler)
-   echo 'user_pref("network.proxy.socks", "127.0.0.1");' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("network.proxy.socks_port", 9050);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("network.proxy.socks_remote_dns", true);' >> "$PROFILE_DIR/prefs.js"
-   proxychains firejail --private librewolf -P prophetia -no-remote >/dev/null 2>&1 &
-   echo "LibreWolf started with Tor proxy in firejail sandbox."
-}
-ultra_namespace() {
-  ns="ghost_$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n1)"
-  sudo ip netns delete $ns 2>/dev/null
-  sudo ip netns add $ns
-  sudo ip link add veth0 type veth peer name veth1
-  sudo ip link set veth1 netns $ns
-  sudo ip addr add 10.66.6.1/24 dev veth0
-  sudo ip link set veth0 up
-  sudo ip netns exec $ns ip addr add 10.66.6.2/24 dev veth1
-  sudo ip netns exec $ns ip link set veth1 up
-  sudo ip netns exec $ns ip route add default via 10.66.6.1
-  export CURRENT_NS=$ns
-}
-ultra_multinet() {
-  sudo systemctl start i2pd lokinet yggdrasil tor --quiet 2>/dev/null
-  cat <<EOF >> /etc/proxychains.conf
-socks5 127.0.0.1 4447    # I2P
-socks5 127.0.0.1 1090    # Lokinet
-socks5 127.0.0.1 20001  # Yggdrasil
-socks5 127.0.0.1 9050    # Tor
-EOF
-  echo -e "\e[32m[+] Tor + I2P + Lokinet + Yggdrasil chain AKTİF\e[0m"
+
+   rm -rf ~/.librewolf/*prophetia* 2>/dev/null
+   librewolf -CreateProfile "prophetia" >/dev/null 2>&1
+   PROFILE_DIR=$(find ~/.librewolf -name "*prophetia" -type d | head -1)
+   
+   if [ -n "$PROFILE_DIR" ]; then
+       echo 'user_pref("privacy.donottrackheader.enabled", true);' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("privacy.clearOnShutdown.cookies", true);' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("privacy.clearOnShutdown.history", true);' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("browser.send_pings", false);' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("network.proxy.type", 1);' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("network.proxy.socks", "127.0.0.1");' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("network.proxy.socks_port", 9050);' >> "$PROFILE_DIR/prefs.js"
+       echo 'user_pref("network.proxy.socks_remote_dns", true);' >> "$PROFILE_DIR/prefs.js"
+   fi
+   
+   echo "[LIBREWOLF] Started with Tor proxy in firejail sandbox."
+   proxychains firejail --private --dns=127.0.0.1 librewolf -P prophetia -no-remote >/dev/null 2>&1 &
 }
 
-ultra_ai_human() {
-  (while true; do
-    xdotool mousemove_relative --polar $((RANDOM%360)) $((RANDOM%100+20))
-    [[ $((RANDOM%3)) -eq 0 ]] && xdotool click 1
-    [[ $((RANDOM%7)) -eq 0 ]] && xdotool type --delay $((RANDOM%200+50)) "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c $((RANDOM%5+1))"
-    sleep $((RANDOM%15+5))
-  done) &
-  echo -e "\e[32m[AI]\e[0m ai active :D (NSA DEAD)"
-}
-
-log() {
-
-  sudo journalctl --rotate >/dev/null 2>&1
-  sudo journalctl --vacuum-time=1s >/dev/null 2>&1
-  sudo journalctl --vacuum-size=1M >/dev/null 2>&1
-
-  LOG_FILES=(
-    /var/log/syslog
-    /var/log/auth.log
-    /var/log/kern.log
-    /var/log/dmesg
-    /var/log/messages
-    /var/log/secure
-    /var/log/wtmp
-    /var/log/btmp
-    /var/log/lastlog
-    /var/log/faillog
-    /var/log/daemon.log
-    /var/log/debug
-    /var/log/user.log
-    /var/log/mail.log
-  )
-
-  for logfile in "${LOG_FILES[@]}"; do
-    if [ -f "$logfile" ]; then
-      sudo shred -z -u -v -n 21 "$logfile" 2>/dev/null || \
-      sudo shred -z -u -n 21 "$logfile" 2>/dev/null
-    fi
-  done
-
-  history -c
-  history -w
-  shred -z -u -n 10 ~/.bash_history 2>/dev/null || true
-  shred -z -u -n 10 ~/.zsh_history 2>/dev/null || true
-  shred -z -u -n 10 ~/.python_history 2>/dev/null || true
-
-  sudo find /tmp -type f -exec shred -z -u -n 3 {} \; 2>/dev/null
-  sudo find /var/tmp -type f -exec shred -z -u -n 3 {} \; 2>/dev/null
-
-  sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
-
-  echo "[LOGS] 21-pass shred completed xd (fbi is crying now)"
-}
-dns() {
-  dig +tcp @$dns_server > /dev/null 2>&1
-}
-
-user_agent() {
-  rand_index=$(( RANDOM % ${#users[@]} ))
-  new_user_agent="${users[$rand_index]}"
-  echo "$new_user_agent" | sudo tee /etc/squid/custom_user_agent
-}
-
-mac() {
+mac_change() {
   declare -A vendor_dict
   vendor_dict=(
-      ["00:41:b4"]="Wuxi Zhongxing Optoelectronics Technowlan0gy Co.,Ltd."
-      ["08:00:46"]="Sony Corporation"
-      ["00:07:0e"]="Cisco Systems, Inc"
-      ["fc:fb:fb"]="Cisco Systems, Inc"
-      ["fc:fa:f7"]="Shanghai Baud Data Communication Co.,Ltd."
-      ["f8:c6:78"]="Carefusion"
-      ["f4:7f:35"]="Cisco Systems, Inc"
-      ["f0:37:a1"]="Huike Electronics (SHENZHEN) CO., LTD."
-      ["ec:43:f6"]="Zyxel Communications Corporation"
-      ["e8:9a:ff"]="Fujian LANDI Commercial Equipment Co.,Ltd"
-      ["e8:5b:f0"]="Imaging Diagnostics"
-      ["e4:d5:3d"]="Hon Hai Precision Ind. Co.,Ltd."
-      ["e0:ee:1b"]="Panasonic Automotive Systems Company of America"
-      ["dc:85:de"]="AzureWave Technowlan0gy Inc."
-      ["00:50:56"]="Medtronic Diabetes"
-      ["3c:df:bd"]="Wush, Inc"
-      ["64:34:09"]="BITwave Pte Ltd"
-      ["50:a4:c8"]="Samsung Electronics Co.,Ltd"
-      ["40:22:ed"]="Digital Projection Ltd"
-      ["38:26:cd"]="ANDTEK"
-      ["30:89:99"]="Guangdong East Power Co.,"
+    ["00:41:b4"]="Wuxi Zhongxing Optoelectronics Technology Co.,Ltd."
+    ["08:00:46"]="Sony Corporation"
+    ["00:07:0e"]="Cisco Systems, Inc"
+    ["fc:fb:fb"]="Cisco Systems, Inc"
+    ["fc:fa:f7"]="Shanghai Baud Data Communication Co.,Ltd."
+    ["f8:c6:78"]="Carefusion"
+    ["f4:7f:35"]="Cisco Systems, Inc"
+    ["f0:37:a1"]="Huike Electronics (SHENZHEN) CO., LTD."
+    ["ec:43:f6"]="Zyxel Communications Corporation"
+    ["e8:9a:ff"]="Fujian LANDI Commercial Equipment Co.,Ltd"
+    ["e8:5b:f0"]="Imaging Diagnostics"
+    ["e4:d5:3d"]="Hon Hai Precision Ind. Co.,Ltd."
+    ["e0:ee:1b"]="Panasonic Automotive Systems Company of America"
+    ["dc:85:de"]="AzureWave Technology Inc."
+    ["00:50:56"]="Medtronic Diabetes"
+    ["3c:df:bd"]="Wush, Inc"
+    ["64:34:09"]="BITwave Pte Ltd"
+    ["50:a4:c8"]="Samsung Electronics Co.,Ltd"
+    ["40:22:ed"]="Digital Projection Ltd"
+    ["38:26:cd"]="ANDTEK"
+    ["30:89:99"]="Guangdong East Power Co.,"
   )
 
   prefix_list=("${!vendor_dict[@]}")
@@ -313,9 +188,52 @@ mac() {
   selected_prefix=${prefix_list[$random_index]}
   random_mac=$(printf "%02x:%02x:%02x" $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)))
   full_mac_address="${selected_prefix,,}:$random_mac"
+  
   sudo ifconfig $interface down > /dev/null 2>&1
   sudo macchanger -m $full_mac_address $interface > /dev/null 2>&1
   sudo ifconfig $interface up > /dev/null 2>&1
+}
+
+user_agent() {
+  rand_index=$(( RANDOM % ${#users[@]} ))
+  echo "${users[$rand_index]}" | sudo tee /etc/squid/custom_user_agent >/dev/null
+}
+
+ultra_ai_human() {
+  if command -v xdotool >/dev/null 2>&1; then
+      (while true; do
+        xdotool mousemove_relative --polar $((RANDOM%360)) $((RANDOM%50+10))
+        [[ $((RANDOM%3)) -eq 0 ]] && xdotool click 1
+        [[ $((RANDOM%7)) -eq 0 ]] && xdotool type --delay $((RANDOM%200+50)) "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c $((RANDOM%5+1))"
+        sleep $((RANDOM%15+5))
+      done) &
+      echo -e "\e[32m[AI]\e[0m ai active :D (NSA DEAD)"
+  fi
+}
+
+log_wipe() {
+    sudo journalctl --rotate >/dev/null 2>&1
+    sudo journalctl --vacuum-time=1s >/dev/null 2>&1
+    sudo journalctl --vacuum-size=1M >/dev/null 2>&1
+
+    LOG_FILES=(
+      /var/log/syslog /var/log/auth.log /var/log/kern.log /var/log/dmesg /var/log/messages
+      /var/log/secure /var/log/wtmp /var/log/btmp /var/log/lastlog /var/log/faillog
+      /var/log/daemon.log /var/log/debug /var/log/user.log /var/log/mail.log
+    )
+
+    for logfile in "${LOG_FILES[@]}"; do
+      if [ -f "$logfile" ]; then
+        sudo shred -z -u -v -n 21 "$logfile" 2>/dev/null
+      fi
+    done
+
+    history -c
+    history -w
+    shred -z -u -n 10 ~/.bash_history 2>/dev/null || true
+    
+    sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
+    echo "[LOGS] 21-pass shred completed xd (fbi is crying now)"
 }
 
 notify() {
@@ -323,105 +241,77 @@ notify() {
   notify-send "Prophetia Notification" "$message"
 }
 
-res_settings() {
+cleanup() {
   echo "Restoring settings..."
-  sudo iptables -P INPUT ACCEPT > /dev/null 2>&1
-  sudo iptables -P FORWARD ACCEPT > /dev/null 2>&1
-  sudo iptables -P OUTPUT ACCEPT > /dev/null 2>&1
-  sudo iptables -F > /dev/null 2>&1
-  sudo service squid stop > /dev/null 2>&1
-  sudo service squid start > /dev/null 2>&1
-  sudo swapoff -a  
-  echo "Settings restored."
+  sudo iptables -F
+  sudo bpftool net detach xdp dev "$interface" >/dev/null 2>&1
+  rm -f /sys/fs/bpf/tcp_spoof
+  killall python3 >/dev/null 2>&1
+  killall xdotool >/dev/null 2>&1
+  exit 0
 }
 
-trap 'res_settings; exit 1' INT TERM
-
-v5() {
-    sleep "$1"
-}
-
-extra_anon() {
-  sudo swapoff -a >/dev/null 2>&1
-  random_host=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n1)
-  sudo hostnamectl set-hostname "$random_host" >/dev/null 2>&1
-  timezones=(America/New_York Europe/London Asia/Tokyo Africa/Johannesburg)  
-  rand_tz=${timezones[$((RANDOM % ${#timezones[@]}))]}
-  sudo timedatectl set-timezone "$rand_tz" >/dev/null 2>&1
-  echo "Extra: Swap off, hostname $random_host, timezone $rand_tz"
-}
+trap cleanup INT TERM
+v5() { sleep "$1"; }
 
 clear
+if command -v cfonts >/dev/null 2>&1; then cfonts Prophetia -a center -f simple3d -c gray; else echo "PROPHETIA"; fi
+echo -e "\e[1m  Prophetia - Be anonymous! | [<enderproject>] \e[0m" 
 echo "< interface: $interface"
-echo "< disk: $disk (no UUID spoof)"
 echo "< timeout: $timeout"
 echo ""
-v5 2
-echo ""
-if ! systemctl is-active doh-client.service >/dev/null 2>&1; then
-  mkdir -p bin/DOH
-  cd bin/DOH/
-  git clone https://github.com/m13253/dns-over-https >/dev/null 2>&1
-  cd dns-over-https/
-  make >/dev/null 2>&1
-  sudo make install >/dev/null 2>&1
-  sudo sed -i '29s#url = "[^"]*"#url = "https://dns.ndo.dev/dns-query"#' "$dohpage"
-  sudo systemctl start doh-client.service >/dev/null 2>&1
-  sudo systemctl enable doh-client.service >/dev/null 2>&1
+
+# DoH ve Proxy başlatma mantığı
+if command -v doh-client >/dev/null 2>&1; then
+    if ! pgrep -x "doh-client" >/dev/null; then
+        sudo doh-client >/dev/null 2>&1 &
+        echo "<<< DoH active. HTTP/DNS encrypted."
+    fi
 fi
-echo "<<< DoH active. HTTP/DNS encrypted."
-v5 15
-sudo touch /etc/squid/custom_user_agent
-sudo systemctl start dbus
-sudo service squid start >/dev/null 2>&1
-proxys
-sudo iptables -P FORWARD DROP >/dev/null 2>&1
-sudo iptables -A OUTPUT -p udp --dport 53 -j ACCEPT >/dev/null 2>&1
-sudo iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT >/dev/null 2>&1
-sudo iptables -A INPUT -i lo -j ACCEPT >/dev/null 2>&1
-sudo iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to-port 3128 >/dev/null 2>&1
+
+sudo systemctl start squid >/dev/null 2>&1
+sudo bash iptables.sh >/dev/null 2>&1
+
+ultra_ram_only
+ultra_tcp_spoof
+browser
+
 echo "Finished. Prophetia Starting..."
+v5 1
 
 while true; do
   time=$(date +"%H:%M:%S")
-  time=$(date +"%H:%M:%S")
-  clear && cfonts Prophetia -a center -f simple3d -c gray && echo -e "\e[1m                                                        Prophetia - Be anonymous! | [<enderproject>]\e[0m"  && echo ""
-
+  clear
+  if command -v cfonts >/dev/null 2>&1; then cfonts Prophetia -a center -f simple3d -c gray; else echo "PROPHETIA"; fi
+  echo -e "\e[1m                                                                                             Prophetia - Be anonymous! | [<enderproject>]\e[0m"  && echo ""
   echo "--time--    --changes--"
+  
+  mac_change
   echo -e "<$time> [\e[34m\e[1mMAC\e[0m] Adress changed. New MAC: '\e[31m\e[1m$(macchanger -s $interface | awk '/Current MAC/{print $3}')\e[0m'"
-  mac
   v5 2
-  dhcp
+
+  sudo dhclient -r > /dev/null 2>&1
+  sudo dhclient > /dev/null 2>&1
   echo -e "<$time> [\e[34m\e[1mDHCP\e[0m] Renewed."
-  notify-send "Prophetia" "DHCP encrypted!"
-  dns
-  echo -e "<$time> [\e[34m\e[1mDNS\e[0m] Encrypted."
+  notify-send "Prophetia" "DHCP encrypted!" >/dev/null 2>&1
   v5 2
+
   routerspoof
   echo -e "<$time> [\e[34m\e[1mROUTER\e[0m] Spoofed (IPv6 + IPv4)"
-  sudo ip route add default via "${gateways[$current_gateway_index]}"
+  
+  sudo ip route add default via "${gateways[$current_gateway_index]}" 2>/dev/null || sudo ip route change default via "${gateways[$current_gateway_index]}" 2>/dev/null
   echo -e "<$time> [GATEWAY] Changed: ${gateways[$current_gateway_index]}"
   current_gateway_index=$(( (current_gateway_index + 1) % ${#gateways[@]} ))
   v5 2
-  extra_anon  
-  echo -e "<$time> [\e[34m\e[1mEXTRA\e[0m] Anon layers added."
+  
   sudo service squid restart >/dev/null 2>&1
-  mitmproxy --mode transparent --modify-headers ":~b'User-Agent:.*' -> 'User-Agent: $(cat /etc/squid/custom_user_agent)'" >/dev/null 2>&1 &
   user_agent
   echo -e "<$time> [USER-AGENT] Changed: $(cat /etc/squid/custom_user_agent)"
   v5 2
-  echo -e "<$time> [\e[34m\e[1mTOR NETWORK\e[0m]  Encrypted, socks5 dynamic."
-  browser
-  echo "[LIBREWOLF] Started with Tor in firejail."
-  v5 4
-  log
-  echo "[LOGS] Cleared."
-  v5 1
-  ultra_tcp_spoof
-  ultra_ram_only
-  ultra_namespace
-  ultra_multinet
-  ultra_ai_human
+  
+  log_wipe
+  
+  ultra_ai_human 
   echo -e "\e[107;34mYour internet is encrypted with 7 layers. You are anonymous! (for now) | Last change: $time\e[0m"
   echo ""
   echo ">>> Timeout : $timeout Sec"
@@ -429,6 +319,3 @@ while true; do
   notify
   sleep $timeout
 done
-res_settings
-
-# gitHub'da örneği yok, çünkü kimse bu kadar manyak değil :)
