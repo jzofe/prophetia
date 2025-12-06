@@ -196,7 +196,7 @@ browser() {
    echo 'user_pref("browser.send_pings", false);' >> "$PROFILE_DIR/prefs.js"
    echo 'user_pref("beacon.enabled", false);' >> "$PROFILE_DIR/prefs.js"
    echo 'user_pref("toolkit.telemetry.enabled", false);' >> "$PROFILE_DIR/prefs.js"
-   echo 'user_pref("network.proxy.type", 1);' >> "$PROFILE_DIR/prefs.js"  # Manual proxy
+   echo 'user_pref("network.proxy.type", 1);' >> "$PROFILE_DIR/prefs.js"  # manual proxy (değiştirilebilirxd ama önermiyom gencler)
    echo 'user_pref("network.proxy.socks", "127.0.0.1");' >> "$PROFILE_DIR/prefs.js"
    echo 'user_pref("network.proxy.socks_port", 9050);' >> "$PROFILE_DIR/prefs.js"
    echo 'user_pref("network.proxy.socks_remote_dns", true);' >> "$PROFILE_DIR/prefs.js"
