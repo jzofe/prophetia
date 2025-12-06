@@ -214,7 +214,6 @@ ultra_namespace() {
   sudo ip netns exec $ns ip addr add 10.66.6.2/24 dev veth1
   sudo ip netns exec $ns ip link set veth1 up
   sudo ip netns exec $ns ip route add default via 10.66.6.1
-  echo -e "\e[32m[+] Yeni namespace: $ns (Qubes mode)\e[0m"
   export CURRENT_NS=$ns
 }
 ultra_multinet() {
