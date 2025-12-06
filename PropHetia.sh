@@ -172,7 +172,12 @@ user_agent() {
     rand_index=$(( RANDOM % ${#users[@]} ))
     echo "${users[$rand_index]}" | ip netns exec "$NETNS_NAME" tee /etc/squid/custom_user_agent >/dev/null
 }
-
+clock_jitter() {
+    JITTER_MS=$(( (RANDOM % 101) - 50 ))
+    ip netns exec "$NETNS_NAME" sudo date +%T.%N -s "$(date +%T.%N -d "now + $JITTER_MS milliseconds")" >/dev/null 2>&1
+    ip netns exec "$NETNS_NAME" sudo systemctl stop systemd-timesyncd 2>/dev/null || true
+    echo -e "<$time> [\e[35mCLOCK\e[0m] Time Jittered by $JITTER_MS ms (Inside Netns)."
+}
 log_spoof() {
     history -c
     FAKE_COMMANDS=(
@@ -363,6 +368,7 @@ ultra_ram_only
 ultra_tcp_spoof
 ultra_ai_human 
 traff_noiser
+clock_jitter
 v5 1
 
 mac_loop_counter=0
