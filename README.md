@@ -51,7 +51,7 @@ layer7: physical swap is killed. a 2 GB encrypted tmpfs + dm-crypt RAM disk is c
 
 layer8: qubes-OS style isolation: a fresh network namespace + veth pair is created on every loop. even if something leaks, it dies with the namespace.
 
-layer9: traffic is forced through proxychains with dynamic_chain: tor (9050) → I2P (4447) → Lokinet (1090) → Yggdrasil (20001). four completely different anonymous networks stacked on top of each other.
+layer9: traffic is forced through proxychains with dynamic_chain: tor (9050) → I2P (4447) → Lokinet (1090) → Yggdrasil (20001). four completely different anonymous networks stacked on top of each other. MTU randomized (1400-1500, u can change if you want xd).
 
 layer10: a hardened “prophetia” profile is created and launched inside firejail --private. all telemetry, pings, beacons, and tracking protection are disabled by default.
 
